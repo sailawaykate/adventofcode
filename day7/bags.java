@@ -1,108 +1,90 @@
 package day7;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Set;
 
 public class bags {
-
-    public static ArrayList<String> fileReader() throws IOException {
-        BufferedReader bufReader = new BufferedReader(new FileReader("day7/bags.txt"));
-        String line = bufReader.readLine();
-        ArrayList<String> rules = new ArrayList<>();
-
-        while (line != null) {
-            rules.add(line);
-            line = bufReader.readLine();
+    
+    static Map<String, Integer> bagsIn = new HashMap<>();
+    static Set<String> bagsOut = new HashSet<>();
+    static private final Set<String> answer = new HashSet<>();
+    
+    private static int bagsInMine(Map<String, List<String>> graph, String key) {
+        if(bagsIn.containsKey(key)) {
+            return bagsIn.get(key);
         }
-
-        return rules;
-    }
-
-    public static ArrayList<ArrayList<String>> rulesList(ArrayList<String> baseRules) {
-        ArrayList<ArrayList<String>> fancyList = new ArrayList<>();
-        String[] partRule;
-        for (String rule : baseRules) {
-            String ezRule = rule.replace("bags", "")
-                    .replace(",", "")
-                    .replace("contain", "")
-                    .replace(".", "")
-                    .replace("bag", "")
-                    .replace(" ", "");
-            partRule = ezRule.split("[0-9]");
-            ArrayList<String> actualRule = new ArrayList<>(Arrays.asList(partRule));
-            fancyList.add(actualRule);
+        bagsOut.add(key);
+        int total = 0;
+        for(String n : graph.getOrDefault(key, new ArrayList<>())) {
+            String[] split = n.split(":");
+            if (split[1].contains("other")) {
+                continue;
+            }
+            int num = split[0].charAt(0) - '0';
+            int d = bagsInMine(graph, split[1]);
+            total += (num * d) + num;
         }
-        return fancyList;
+        bagsIn.put(key, total);
+        return total ;
     }
-
-    public static int countUniqueCharacters(ArrayList<String> input) {
-        boolean[] isItThere = new boolean[Character.MAX_VALUE];
-
-        for (String answer : input) {
-            for (int i = 0; i < answer.length(); i++) {
-                isItThere[answer.charAt(i)] = true;
-                for (String answer2 : input) {
-                    if (!answer2.contains(String.valueOf(answer.charAt(i)))) {
-                        isItThere[answer.charAt(i)] = false;
-                        break;
-                    }
+    
+    private static void bagsThatHaveMine(Map<String, List<String>> graph, String key) {
+        bagsOut.add(key);
+        for(String n : graph.getOrDefault(key, new ArrayList<>())) {
+            if(!bagsOut.contains(n)) {
+                answer.add(n);
+                bagsThatHaveMine(graph, n);
+            }
+        }
+    }
+    
+    public static void main(String[] args) {
+        File file = new File("day7/bags.txt");
+        final String myBag = "shiny gold";
+        try {
+            Map<String, List<String>> graph1 = new HashMap<>();
+            Map<String, List<String>> graph2 = new HashMap<>();
+            Scanner sc = new Scanner(file);
+           
+            while (sc.hasNextLine()) {
+                String line = sc.nextLine();
+                String[] split = line.split("(\\sbags contain)");
+                String container = split[0];
+                String[] inside = split[1].split(",");
+    
+                for (String s : inside) {
+                    String num = s.trim().split(" ")[0];
+                    String color = s.replace(num, "")
+                                    .replace("bags", "")
+                                    .replace("bag", "")
+                                    .replace(".", "")
+                                    .trim();
+                    List<String> n2 = graph2.getOrDefault(container, new ArrayList<>());
+                    n2.add(num + ":" + color);
+                    graph2.put(container, n2);
+                    List<String> n1 = graph1.getOrDefault(color, new ArrayList<>());
+                    n1.add(container);
+                    graph1.put(color, n1);
                 }
             }
+            //part1
+            bagsThatHaveMine(graph1, myBag);
+            System.out.println(answer.size());
+            
+            //part2
+            int total = bagsInMine(graph2, myBag);
+            System.out.println(total);
+            
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
         }
-
-        int count = 0;
-        for (boolean b : isItThere) {
-            if (b) {
-                count++;
-            }
-        }
-
-        return count;
     }
-
-    public static ArrayList<String> containsMyBag(ArrayList<String> bagColors, ArrayList<ArrayList<String>> bagRules) {
-        final ArrayList<String> newList = new ArrayList<>();
-        for (String bagColor : bagColors) {
-            for (ArrayList<String> currentColor : bagRules) {
-                if (currentColor.contains(bagColor)
-                        && !bagColor.equals(currentColor.get(0))
-                        && !bagColors.contains(currentColor.get(0))) {
-                    newList.add(currentColor.get(0));
-                }
-            }
-        }
-        return newList;
-    }
-
-    public static void main(String[] args) throws IOException {
-        final ArrayList<String> bags = fileReader();
-        final ArrayList<ArrayList<String>> list = rulesList(bags);
-
-        final String myBag = "shinygold";
-        ArrayList<String> colors = new ArrayList<>();
-        colors.add(myBag);
-
-        for (int i = 0; i < colors.size(); i++) {
-            int oldSize = colors.size();
-            colors.addAll(containsMyBag(colors, list));
-            int newSize = colors.size();
-            System.out.println(colors);
-            if (newSize == oldSize) {
-                break;
-            }
-        }
-
-        Collections.sort(colors);
-        for (int k = 0; k < colors.size() - 1; k++) {
-            if (colors.get(k).equals(colors.get(k + 1))) {
-                colors.remove(k + 1);
-            }
-        }
-        System.out.println(colors.size()-1);
-        System.out.println(colors);
-    }
+    
 }
